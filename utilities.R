@@ -17,3 +17,4 @@ chunk <- function(x,n){
 getChunkSize <- function(funds){
   if(length(funds)<85) return(length(funds)) else return(ceiling(length(funds))/85)
 }
+

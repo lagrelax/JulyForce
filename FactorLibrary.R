@@ -13,7 +13,7 @@ meta_indicators <- indicators %>% filter(table == 'SF1')
 
 ticker_meta <- Quandl.datatable('SHARADAR/TICKERS', paginate = T)
 
-load(file='All_daily_fundamental.Rdata')
+load(file='Data/All_daily_fundamental.Rdata')
 
 # load fundamental data 
 
@@ -71,10 +71,12 @@ quality_factor_zscore <- quality_factor_dt_sub %>% left_join(quality_factor_mont
 quality_factor_weighted_zscore <- quality_factor_zscore %>% group_by(ticker,yearmonth) %>% summarise(z_score=mean(z_score))
 quality_factor_weighted_zscore <- quality_factor_weighted_zscore %>% group_by(yearmonth) %>% mutate(z_rank=percent_rank(z_score)) %>% as.data.frame
 
-
 # choose one ticker 
 one_ticker <- subset(quality_factor_weighted_zscore,ticker=='MSFT')
 ggplot(one_ticker)+geom_point(aes(x=yearmonth,y=z_rank))
+
+value <- pb_z_score
+quality <- quality_factor_weighted_zscore
 
 # Momentum Factor - Barra Momentum Factor # 
 # get excess return first Russell 3000 index 
