@@ -10,150 +10,56 @@ library(ggplot2)
 library(plotly)
 
 source('utilities.R')
+source('FactorLibraryV2.R')
+source('portUtil.R')
 
-Quandl.api_key(Sys.getenv('QUANDL_API_KEY'))
-# get sp500 constituent #
-sp500 <- Quandl.datatable('SHARADAR/SP500')
-sp500.sum <- sp500 %>% group_by(date,action) %>% summarize(ticker_num = length(ticker))
-sp500.cur <- sp500 %>% filter(action=='current')
-#sp500.0102 <- sp500 %>% filter(date=='2019-01-02')
-#sp500.cur.sub <- sp500.cur %>% filter(ticker %in% sp500.0102$ticker)
+# Step 1. Get universe
+# sp500 all universe 
+#univ <- getSP500Univ()
+load('Data/SP500_Univ.RData')
 
-dates <- rev(sort(as.Date(unique(sp500$date))))
-univ <- NULL
-univ.cur <- sp500.cur
-for (i in dates)
-{
-  sp500.cur <- sp500 %>% filter(date==i) 
-  sp500.add <- sp500.cur %>% filter(action == 'added') 
-  sp500.removed <- sp500.cur %>% filter(action == 'removed') %>% mutate(action='current')
-  sp500.cur <- univ.cur %>% filter(!ticker %in% sp500.add$ticker)
-  sp500.cur <- rbind(sp500.cur, sp500.removed) %>% mutate(date=i)
-  #metrics.dly <- map_df(sp500.cur$ticker, ~Quandl.datatable('SHARADAR/DAILY',ticker='ZTS'))
-  univ.cur <- sp500.cur
-  univ <- rbind(univ,sp500.cur)
-}
-
-univ <- univ %>% mutate(date = as.Date(date))
-univ.sum <- univ %>% group_by(date,action) %>% summarize(ticker_num = length(ticker))
-save(univ,file='Data/SP500.RData')
-
-# rerun value factor using sp500 constituent #
-load(file='Data/All_daily_fundamental.Rdata')
-
-
-# pb ratio z score
-pb_dt_all <- fundamental_dt_all %>% select(ticker,pb,calendardate) %>% mutate(yearmonth=as.yearmon(calendardate))
-
-#pb_montly_summary <- pb_dt_all %>% group_by(yearmonth) %>% summarise(Na=sum(is.na(pb)))
-#ggplot(pb_montly_summary)+geom_point(aes(x=yearmonth,y=Na))
-
+# Step 2. Get z-score
 # Z score of pb
-pb_monthly_mean_sd <- pb_dt_all %>% na.omit %>% group_by(yearmonth) %>% summarise(mean=mean(pb),sd=sd(pb))
+load(file='Data/All_daily_fundamental.Rdata')
+fundamental_dt_all <- fundamental_dt_all %>% filter(ticker!='VRSN')
+pb_z_score <- getFactorZscore('pb')
 
-pb_z_score <- pb_dt_all %>% left_join(pb_monthly_mean_sd) %>% mutate(z_score=(pb-mean)/sd)
-
-# sp500 all universe ## 
+# Step 3. Rank the z-score
+# Rank of pb within SP
 sp500.all <- unique(univ$ticker)
 pb_z_score.sp500 <- pb_z_score %>% filter(ticker %in% sp500.all)
 
 pb_z_score.sp500 <- pb_z_score.sp500 %>% group_by(yearmonth) %>% mutate(z_rank=percent_rank(z_score)) %>% as.data.frame
-pb_z_score.sp500.sum <- pb_z_score.sp500 %>% group_by(yearmonth) %>% summarize(ticker_num=length(ticker))
 
-
-
-# backtesting 
-load('Data/All_daily_price.RData')
-
-value <- pb_z_score.sp500
+# Step 4. Construct the port
+# Get port weights
+univ <- pb_z_score.sp500
 cut_off <- 0.025
-value_low <- value %>% filter(z_rank<=cut_off) %>% select(yearmonth,ticker,calendardate) %>% mutate(action='short')
-value_high <- value %>% filter(z_rank>=(1-cut_off)) %>%  select(yearmonth,ticker,calendardate) %>% mutate(action='long')
+port_rtn <- constructPortQtly(univ,'z_rank',cut_off,F)
+value_pos <- port_rtn$port
+rtn_qtly <- port_rtn$rtn
 
-#value_long_short <- value_high %>% rbind(value_low) %>% mutate(quarter=as.yearqtr(calendardate+1))
-
-value_long_short <- value_high %>% mutate(quarter=as.yearqtr(calendardate+1))
-
-securities <- unique(value_long_short$ticker)
-all_price <- price_dt_all %>% filter(ticker %in% securities)
-
-# Filter out penny stocks when their prices = 0
-all_price <- all_price %>% filter(close>0&volume>0)
-
-price_wide <- all_price %>% select(ticker,date,close) %>% mutate(close=as.numeric(close)) %>% spread(ticker,close)
-price_xts <- xts(price_wide[,-1],order.by = price_wide$date)
-
-rtn_xts <- Return.calculate(price_xts,method='discrete')
-
-# Fill the NA rtn with 0, when the stock close, treated as holding cash
-rtn_xts[is.na(rtn_xts)] <- 0
-
-rtn_df <- as.data.frame(rtn_xts)
-rtn_df$date <- rownames(rtn_df)
-rtn_df_long <- rtn_df %>% gather(ticker,return,-date) %>% mutate(date=as.Date(date)) 
-
-qtr_date <- unique(rtn_df[,'date',F]) %>% mutate(date=as.Date(date),quarter=as.yearqtr(date))
-qtr_date <- qtr_date %>% filter(quarter!='1998 Q4')
-
-rtn_df_long <- rtn_df_long %>% left_join(qtr_date) 
-
-rtn_qtly <- rtn_df_long %>% group_by(quarter,ticker) %>% summarise(return=prod(1+return))
-
-value_long_short <- value_long_short %>% filter(ticker %in% unique(rtn_qtly$ticker))
-
-value_sum <- value_long_short %>% group_by(quarter) %>% summarise(Nlong=sum(action=='long'),Nshort=sum(action=='short'))
-
-value_pos <- value_long_short %>% left_join(value_sum) %>% mutate(wgt=ifelse(action=='long',1/Nlong,-1/Nshort))
-
-# Filter out 1998
-value_pos <- value_pos %>% filter(calendardate>='1998-12-01')
-
+# Step 5. Calculate the returns of the portfolio
+# Starting at 2000 Q2 due to data issue
+value_pos <- value_pos %>% filter(calendardate>='2000-04-01')
 value_pos_rtn <- value_pos %>% left_join(rtn_qtly,by=c('ticker','quarter'))
+rtn_port <- value_pos_rtn %>% group_by(quarter) %>% summarise(Value=sum(wgt*(1+return))-1)
 
-rtn_port <- value_pos_rtn %>% group_by(quarter) %>% summarise(Value=sum(wgt*return)-1)
 
-# Market BM
-load('Data/R300DailyReturnXTS.RData')
+# Step 6. Get the market BM
+# Convert daily return to qtly
+idx='SP500'
+bm_qtly_rtn <- getBMRtn(idx,'qtly')
 
-# Convert daily R3000 return to qtly
-r3000_df <- r3000_rtn %>% as.data.frame
-r3000_df$date <- rownames(r3000_df) %>% as.Date
-rownames(r3000_df) <- NULL
-
-r3000_df <- r3000_df %>% left_join(qtr_date) %>% filter(!is.na(quarter))
-r3000_qtly_rtn <- r3000_df %>% group_by(quarter) %>% summarise(R3000=prod(1+R3000)-1)
-
-value_perf <- rtn_port %>% inner_join(r3000_qtly_rtn) 
-
+# Step 7. Compare with the BM
+value_perf <- rtn_port %>% inner_join(bm_qtly_rtn) 
 value_perf_long <- value_perf %>% gather(Port,Ret,-quarter)
 
 p <- ggplot(value_perf_long)+geom_line(aes(x=quarter,y=Ret,color=Port))
 ggplotly(p)
 
-tmp <- value_perf %>% mutate(date=as.Date(quarter)) 
-perf_xts <- as.xts(tmp[,c('Value','R3000')],order.by = tmp$date)
+summarisePortPerf(value_perf)
 
-
-# Avg Rtn (Qtly)
-N=nrow(perf_xts)/4
-apply(perf_xts,MARGIN = 2,mean)
-
-# Avg Rtn Annually
-port_rtn_annualized <- apply(perf_xts,MARGIN = 2,function(x)prod(1+x)^(1/N)-1)
-rtn_ann <- cbind(data.frame(Statistics='Annual Return'),t(port_rtn_annualized))
-
-# Sd Annually
-apply(perf_xts,MARGIN = 2,sd)*sqrt(4)
-sd_ann <- cbind(data.frame(Statistics='Annual Sd'),t(apply(perf_xts,MARGIN = 2,sd)*sqrt(4)))
-
-#Annualzied Sharp Ratio
-sharpe <- SharpeRatio.annualized(perf_xts,scale = 4)
-rownames(sharpe) <- NULL
-sharp_ann <- cbind(data.frame(Statistics='Annual Sharpe (Rf=0%)'),sharpe)
-
-# Summary Table
-summary <- rbind(rtn_ann,sd_ann,sharp_ann)
-summary
-charts.PerformanceSummary(perf_xts)
-write.csv(summary,file='Output/sp500_Value_Long_Short_0.025_Summary.csv',row.names = F)
-save(value_pos_rtn,perf_xts,summary,file='Data/sp500_Value_Long_Short_0.025.RData')
+pos_attr <- value_pos_rtn %>% mutate(attr=wgt*return)
+pp <- ggplot(pos_attr)+geom_bar(aes(x=quarter,y=attr,fill=ticker),stat='identity')
+ggplotly(pp)
