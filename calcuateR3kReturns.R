@@ -16,3 +16,4 @@ r3000_rtn <- Return.calculate(r3000_xts,method='discrete')
 r3000_rtn[is.na(r3000_rtn$R3000)] <- 0
 
 save(r3000_rtn,file='Data/R300DailyReturnXTS.RData')
+

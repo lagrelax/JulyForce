@@ -5,6 +5,7 @@ library(dplyr)
 library(purrr)
 library(xts)
 library(tidyr)
+library(lubridate)
 library(PerformanceAnalytics)
 library(ggplot2)
 library(plotly)
@@ -21,7 +22,10 @@ value_high <- value %>% filter(z_rank>=(1-cut_off)) %>%  select(yearmonth,ticker
 
 value_long_short <- value_high %>% rbind(value_low) %>% mutate(quarter=as.yearqtr(calendardate+1))
 
-#value_long_short <- value_high %>% mutate(quarter=as.yearqtr(calendardate+1))
+value_lucky_7 <- value %>% group_by(yearmonth) %>% do(mutate(.,rank=rank(-z_rank))) %>% filter(rank<=7) %>%  select(yearmonth,ticker,calendardate) %>% as.data.frame %>% mutate(action='long',yearmonth=as.yearmon(yearmonth))
+
+value_long_short <- value_high %>% mutate(quarter=as.yearqtr(calendardate+1))
+#value_long_short <- value_lucky_7 %>% mutate(quarter=as.yearqtr(calendardate+1))
 
 securities <- unique(value_long_short$ticker)
 load('Data/All_daily_price.RData')
@@ -53,7 +57,8 @@ value_long_short <- value_long_short %>% filter(ticker %in% unique(rtn_qtly$tick
 
 value_sum <- value_long_short %>% group_by(quarter) %>% summarise(Nlong=sum(action=='long'),Nshort=sum(action=='short'))
 
-value_pos <- value_long_short %>% left_join(value_sum) %>% mutate(wgt=ifelse(action=='long',2/Nlong,-1/Nshort))
+num_actions <- length(unique(value_long_short$action))
+value_pos <- value_long_short %>% left_join(value_sum) %>% mutate(wgt=ifelse(action=='long',num_actions/Nlong,-1/Nshort))
 
 # Filter out 1998
 value_pos <- value_pos %>% filter(calendardate>='1998-12-01')
@@ -105,5 +110,5 @@ sharp_ann <- cbind(data.frame(Statistics='Annual Sharpe (Rf=0%)'),sharpe)
 summary <- rbind(rtn_ann,sd_ann,sharp_ann)
 summary
 charts.PerformanceSummary(perf_xts)
-write.csv(summary,file='Output/Port_Value_Long_Short_0.025_Summary.csv',row.names = F)
-save(value_pos_rtn,perf_xts,summary,file='Data/Port_Value_Long_Short_0.025.RData')
+#write.csv(summary,file='Output/Port_Value_Long_Short_0.025_Summary.csv',row.names = F)
+#save(value_pos_rtn,perf_xts,summary,file='Data/Port_Value_Long_Short_0.025.RData')

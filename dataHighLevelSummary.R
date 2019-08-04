@@ -25,13 +25,14 @@ tmp <- ticker_domestic %>% filter(!is.na(firstquarter))
 min_date <- min(tmp$firstquarter) %>% as.Date
 
 # Most recent month end date
-max_date <- as.Date('2018-06-30')
-
+min_date <- as.Date('2018-07-01')
+max_date <- as.Date('2019-01-31')
 dates <-
   seq.Date(min_date, max_date, by = 'day') %>% adjust.previous(cal = 'NYSE') %>% unique
 
 # Take 1 hr to load from QUANDL
-# system.time(price_dt_all <- dates %>% map_df(~Quandl.datatable('SHARADAR/SEP',date=.x,paginate = T)))
+system.time(price_dt_all <- dates %>% map_df(~Quandl.datatable('SHARADAR/SEP',date=.x,paginate = T)))
+
 load('Data/All_daily_price.RData')
 
 price_dt_all <- price_dt_all %>% mutate(yearmonth = as.yearmon(date))
