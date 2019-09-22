@@ -8,7 +8,7 @@ library(bizdays)
 Quandl.api_key(Sys.getenv('QUANDL_API_KEY'))
 
 # Get historical holiday dates for NYSE
-ny_holidays <- holidayNYSE(1992:2018)
+ny_holidays <- holidayNYSE(1992:2100)
 
 # Create a calendar exclude holidays and weekends
 create.calendar('NYSE',holidays = ny_holidays,weekdays = c('saturday','sunday'))
@@ -40,9 +40,13 @@ getSP500Univ <- function()
   {
     sp500.cur <- sp500 %>% filter(date==i) 
     sp500.add <- sp500.cur %>% filter(action == 'added') 
-    sp500.removed <- sp500.cur %>% filter(action == 'removed') %>% mutate(action='current')
+    if('removed' %in% unique(sp500.cur$action))
+      sp500.removed <- sp500.cur %>% filter(action == 'removed') %>% mutate(action='current')
     sp500.cur <- univ.cur %>% filter(!ticker %in% sp500.add$ticker)
-    sp500.cur <- rbind(sp500.cur, sp500.removed) %>% mutate(date=i)
+    if(exists('sp500.removed'))
+      sp500.cur <- rbind(sp500.cur, sp500.removed) 
+    
+    sp500.cur <- sp500.cur %>% mutate(date=i)
     #metrics.dly <- map_df(sp500.cur$ticker, ~Quandl.datatable('SHARADAR/DAILY',ticker='ZTS'))
     univ.cur <- sp500.cur
     univ <- rbind(univ,sp500.cur)
@@ -128,5 +132,36 @@ getSecuritesRtn <- function(securities,freq='dly')
     result <- rtn_qtly  
   }
   
+  if(freq=='mthly')
+  {
+    yearmon <- unique(rtn_df[,'date',F]) %>% mutate(date=as.Date(date),yearmon=as.yearmon(date))
+    #qtr_date <- qtr_date %>% filter(quarter!='1998 Q4')
+    
+    rtn_df_long <- rtn_df_long %>% left_join(yearmon) 
+    
+    rtn_mthly <- rtn_df_long %>% group_by(yearmon,ticker) %>% summarise(return=prod(1+return)-1)
+    
+    result <- rtn_mthly  
+  }
+  
   return(result)
+}
+
+#' Given a period dates, find the quarter end dates between them, adjust to previous biz dates
+#'
+#' @param start 
+#' @param end 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+getQuarterEndDates <- function(start,end)
+{
+  start <- as.Date(start,format='%Y%m%d') %m+% months(3)
+  end <- as.Date(end,format="%Y%m%d")
+  dates <- data.frame(Date=seq(start,end,by='day'))
+  dates <- dates %>% mutate(QuarterEnd=as.Date(as.yearqtr(Date))-1)
+  qtr_ends <- dates %>% select(QuarterEnd) %>% unique %>% mutate(BizDate=adjust.previous(QuarterEnd,'NYSE'))
+  qtr_ends <- qtr_ends$BizDate
 }
