@@ -62,3 +62,4 @@ summarisePortPerf(value_perf)
 pos_attr <- port_wgt_rtn_ts %>% mutate(attr=wgt*return)
 pp <- ggplot(pos_attr)+geom_bar(aes(x=return_quarter,y=attr,fill=ticker),stat='identity')
 ggplotly(pp)
+

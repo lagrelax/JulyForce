@@ -39,7 +39,7 @@ constructPortQtly <- function(univ,rank_col,cut_off=0.025,long_short=F)
 
 summarisePortPerf <- function(port_perf)
 {
-  tmp <- port_perf %>% mutate(date=as.Date(quarter)) 
+  tmp <- port_perf %>% mutate(date=as.Date(return_quarter)) 
   perf_xts <- as.xts(tmp[,c('Value',idx)],order.by = tmp$date)
   
   # Avg Rtn (Qtly)
