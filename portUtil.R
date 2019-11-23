@@ -11,18 +11,20 @@
 #' @examples
 constructPortQtly <- function(univ,rank_col,cut_off=0.025,long_short=F)
 {
-  long_portion <- univ %>% filter(!!sym(rank_col)>=(1-cut_off)) %>%  select(yearmonth,ticker,calendardate) %>% mutate(action='long')
+  long_portion <- univ %>% filter(!!sym(rank_col)>=(1-cut_off)) %>%  select(yearmonth,ticker,rebalance_date) %>% mutate(action='long')
   if(long_short)
-    short_portion <- univ %>% filter(!!sym(rank_col)<=(cut_off)) %>%  select(yearmonth,ticker,calendardate) %>% mutate(action='long')
+    short_portion <- univ %>% filter(!!sym(rank_col)<=(cut_off)) %>%  select(yearmonth,ticker,rebalance_date) %>% mutate(action='long')
   
   if(!long_short)
     port <- long_portion else port <- rbind(long_portion,short_portion)
     
-    port <- port %>% mutate(quarter=as.yearqtr(calendardate+1))
+    port <- port %>% mutate(quarter=as.yearqtr(rebalance_date+1))
     
     # Get the returns of all securities in the portfolio, remove those w/o rtns data
     securities <- unique(port$ticker)
     rtn_qtly <- getSecuritesRtn(securities,'qtly')
+    # Get the next 3Month Performance for the stock if choose quarterly, TODO: dynamicly choose frequency 
+    rtn_qtly <- rtn_qtly %>% filter(quarter == as.yearqtr(rebalance_date %m+% months(3))) %>% plyr::rename(c('quarter'='return_quarter'))
     
     port <- port %>% filter(ticker %in% unique(rtn_qtly$ticker))
     
