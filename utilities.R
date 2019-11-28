@@ -57,17 +57,14 @@ getSP500Univ <- function()
   return(univ)
 }
 
-getBMRtn <- function(idx='SP500',freq='dly')
+getBMRtn <- function(from_date,to_date,idx='SP500',freq='dly')
 {
-  # TODO, change to yahoo API
-  raw_file <- 'Data/SP500Daily.csv'
-  if(idx=='R3000')
-    raw_file <- 'Data/RUA3.csv'
+  if(idx=='SP500')
+  {
+    getSymbols.yahoo('^GSPC',env=globalenv(),from='1999-12-31')
+    bm_xts <- GSPC[,'GSPC.Adjusted']
+  }
   
-  bm <- read.csv(raw_file)
-  bm$Date <- as.Date(bm$Date)
-  
-  bm_xts <- as.xts(as.numeric(bm$Adj.Close),order.by = bm$Date)
   bm_rtn <- Return.calculate(bm_xts,method='discrete')
   names(bm_rtn) <- idx
   
