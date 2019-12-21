@@ -74,17 +74,31 @@ getFactorZscore <- function(factor='pb',rebalance_date)
 #' @param foward Forward period of returns, only surpport Monthly for now. Quartely rtn has to be re-cummlated
 #' 
 #' @return
-calculateIC <- function(df,rtn,forward='Monthly')
+calculateIC <- function(fundamental_rank,rtn_mthly,forward=3)
 {
-  df_long <- df %>% gather(score,value,-ticker,-date)
-  rtn_fwd <- rtn
+  # Calculate cumulative return
   
-  if(forward=='Monthly')
-    rtn_fwd$date2=rtn_fwd$date %m+% months(-1)
   
-  rtn_fwd <- rtn_fwd %>% mutate(date=date2) %>% select(-date2)
-  ic_df <- df_long %>% inner_join(rtn_fwd,by=c('ticker','date'))
-  ic_df <- ic_df %>% group_by(date,score) %>% dplyr::summarise(IC=cor(value,return,method = 'spearman',use='pairwise.complete.obs'))
-  ic_df <- ic_df %>% spread(score,IC)
+  cum_rtn_all <- split(rtn_mthly,rtn_mthly$ticker) %>% map_df(function(df){
+    df <- df %>% as.data.frame %>% mutate(date=as.Date(yearmon))
+    df_xts <- as.xts(df$return,order.by = df$date)
+    cum_rtn <- apply.rolling(df_xts,width=forward,FUN=function(x) prod(1+x)-1)
+    names(cum_rtn)='forward_return'
+    cum_rtn <- as.data.frame(cum_rtn)
+    cum_rtn$yearmon=as.yearmon(as.Date(rownames(cum_rtn)) %m+% months(-(forward-1)))
+    rownames(cum_rtn) <- NULL
+    cum_rtn$ticker <- df$ticker
+    cum_rtn <- na.omit(cum_rtn)
+  })
+  
+  cum_rtn_all <- cum_rtn_all %>% mutate(yearmon=as.yearmon(yearmon))
+  
+  # Join with rank data, 1 mth fwd
+  fundamental_rank <- fundamental_rank %>% mutate(forward_period=as.yearmon(rebalance_date %m+% months(1)))
+  
+  ic_df <- fundamental_rank %>% inner_join(cum_rtn_all,by=c('ticker','forward_period'='yearmon'))
+  
+  ic_df <- ic_df %>% group_by(rebalance_date) %>% dplyr::summarise(IC=cor(z_rank,forward_return,method = 'spearman',use='pairwise.complete.obs'))
+  
 }
 

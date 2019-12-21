@@ -9,6 +9,7 @@ library(PerformanceAnalytics)
 library(ggplot2)
 library(plotly)
 library(lubridate)
+library(quantmod)
 
 source('utilities.R')
 source('FactorLibraryV2.R')
