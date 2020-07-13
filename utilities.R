@@ -57,7 +57,7 @@ getSP500Univ <- function()
   return(univ)
 }
 
-getBMRtn <- function(from_date,to_date,idx='SP500',freq='dly')
+getBMRtn <- function(idx='SP500',freq='dly')
 {
   if(idx=='SP500')
   {
@@ -167,4 +167,14 @@ getQuarterEndDates <- function(start,end)
   dates <- dates %>% mutate(QuarterEnd=as.Date(as.yearqtr(Date))-1)
   qtr_ends <- dates %>% select(QuarterEnd) %>% unique %>% mutate(BizDate=adjust.previous(QuarterEnd,'NYSE'))
   qtr_ends <- qtr_ends$BizDate
+}
+
+getMonthEndDates <- function(start,end)
+{
+  start <- as.Date(start,format='%Y%m%d') %m+% months(1)
+  end <- as.Date(end,format="%Y%m%d")
+  dates <- data.frame(Date=seq(start,end,by='day'))
+  dates <- dates %>% mutate(MonthEnd=as.Date(as.yearmon(Date))-1)
+  mth_ends <- dates %>% select(MonthEnd) %>% unique %>% mutate(BizDate=adjust.previous(MonthEnd,'NYSE'))
+  mth_ends <- mth_ends$BizDate
 }
