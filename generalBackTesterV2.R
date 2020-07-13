@@ -9,7 +9,7 @@ library(PerformanceAnalytics)
 library(ggplot2)
 library(plotly)
 library(lubridate)
-
+library(quantmod)
 source('utilities.R')
 source('FactorLibraryV2.R')
 source('portUtil.R')
@@ -21,7 +21,7 @@ end_date='20190701'
 
 backtest_period <- getQuarterEndDates(start_date,end_date)
 
-factor <- 'pb'
+factor <- 'roic'
 
 # For each rebalance date, get the Sp univserse and rank the respective fundamental column
 port_wgt_rtn_ts <- NULL
@@ -47,8 +47,9 @@ rtn_port <- port_wgt_rtn_ts %>% group_by(return_quarter) %>% summarise(Value=sum
 
 # Step 6. Get the market BM
 # Convert daily return to qtly
-idx='SP500'
-bm_qtly_rtn <- getBMRtn(idx,'qtly')
+#idx='SP500'
+idx='RUS3000'
+bm_qtly_rtn <- getBMRtn(start_date,end_date,idx,'qtly')
 
 # Step 7. Compare with the BM
 value_perf <- rtn_port %>% inner_join(bm_qtly_rtn, by=c('return_quarter'='quarter')) 
@@ -63,3 +64,7 @@ pos_attr <- port_wgt_rtn_ts %>% mutate(attr=wgt*return)
 pp <- ggplot(pos_attr)+geom_bar(aes(x=return_quarter,y=attr,fill=ticker),stat='identity')
 ggplotly(pp)
 
+# get monthly factor zscore 
+#load('Data/All_qtly_fundamental.RData')
+#avail_fundamental <- fundamental_dt_all %>% 
+calculateIC()

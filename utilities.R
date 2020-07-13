@@ -64,6 +64,12 @@ getBMRtn <- function(from_date,to_date,idx='SP500',freq='dly')
     getSymbols.yahoo('^GSPC',env=globalenv(),from='1999-12-31')
     bm_xts <- GSPC[,'GSPC.Adjusted']
   }
+  if(idx=='RUS3000')
+  {
+    getSymbols.yahoo('^RUA',env=globalenv(),from='1999-12-31')
+    bm_xts <- RUA[,'RUA.Adjusted']
+  }
+  
   
   bm_rtn <- Return.calculate(bm_xts,method='discrete')
   names(bm_rtn) <- idx
