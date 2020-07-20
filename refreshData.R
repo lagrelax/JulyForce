@@ -30,3 +30,12 @@ system.time(fundamental_dt_all_new <- dates %>% map_df(~Quandl.datatable('SHARAD
 file.rename('Data/All_qtly_fundamental.RData',paste0('Data/All_qtly_fundamental','_',max(fundamental_dt_all$date),'.RData'))
 fundamental_dt_all <- rbind(fundamental_dt_all,fundamental_dt_all_new)
 save(fundamental_dt_all,file='Data/All_qtly_fundamental.RData')
+
+sp_univ_all <- read.csv('Data/SP_Univ_All.csv')
+sp_univ_new <- getSP500Univ()
+max_date <- max(sp_univ_all$date)
+sp_univ_net_new <- sp_univ_new %>% filter(date>max_date)
+
+file.rename('Data/SP_Univ_All.csv',paste0('Data/SP_UNIV_ALL_',max_date,'.csv'))
+sp_univ_all <- rbind(sp_univ_all,sp_univ_net_new)
+write.csv(sp_univ_all,'Data/SP_Univ_All.csv',row.names = F)

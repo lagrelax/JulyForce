@@ -13,7 +13,7 @@ getAvailSPUniv <- function(rebalance_date)
   if(!exists('SP_UNIV_ALL'))
   {
     print('Intializting sp500 all constitutents history')
-    SP_UNIV_ALL <<- getSP500Univ()
+    SP_UNIV_ALL <<- read.csv('Data/SP_Univ_All.csv')
   }
     
   
@@ -85,6 +85,7 @@ calculateIC <- function(fundamental_rank,rtn_mthly,forward=3)
     cum_rtn <- apply.rolling(df_xts,width=forward,FUN=function(x) prod(1+x)-1)
     names(cum_rtn)='forward_return'
     cum_rtn <- as.data.frame(cum_rtn)
+    # The rolling make the quarter-end as date key, convert it back to quarter start
     cum_rtn$yearmon=as.yearmon(as.Date(rownames(cum_rtn)) %m+% months(-(forward-1)))
     rownames(cum_rtn) <- NULL
     cum_rtn$ticker <- df$ticker
@@ -101,4 +102,5 @@ calculateIC <- function(fundamental_rank,rtn_mthly,forward=3)
   ic_df <- ic_df %>% group_by(rebalance_date) %>% dplyr::summarise(IC=cor(z_rank,forward_return,method = 'spearman',use='pairwise.complete.obs'))
   
 }
+
 

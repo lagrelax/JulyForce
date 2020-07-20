@@ -16,9 +16,9 @@ source('FactorLibraryV2.R')
 source('portUtil.R')
 
 # Step 1, get a series of rebalance dates
-start_date='19991231'
+start_date='20000131'
 #start_date='20180101'
-end_date='20190701'
+end_date='20200701'
 
 backtest_period <- getMonthEndDates(start_date,end_date) 
 
@@ -37,3 +37,10 @@ for (rebalance_date in backtest_period)
 rtn_all_mthly <- getSecuritesRtn(unique(fundamental_rank$ticker),'mthly')
 
 fundamental_rank <- fundamental_rank %>% select(ticker,rebalance_date,yearmonth,z_rank)
+
+ic <- calculateIC(fundamental_rank,rtn_all_mthly,forward = 3)
+
+
+p <- ggplot(ic)+geom_bar(aes(x=rebalance_date,y=IC),stat = 'identity')
+
+ggplotly(p)

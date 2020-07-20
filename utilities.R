@@ -27,7 +27,7 @@ getChunkSize <- function(funds){
 getSP500Univ <- function()
 {
   # get sp500 constituent #
-  sp500 <- Quandl.datatable('SHARADAR/SP500')
+  sp500 <- Quandl.datatable('SHARADAR/SP500',paginate=T)
   sp500.sum <- sp500 %>% group_by(date,action) %>% summarize(ticker_num = length(ticker))
   sp500.cur <- sp500 %>% filter(action=='current')
   #sp500.0102 <- sp500 %>% filter(date=='2019-01-02')
