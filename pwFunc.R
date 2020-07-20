@@ -1,6 +1,7 @@
 library(Quandl)
 source('utilities.R')
 
+library(tidyr)
 library(dplyr)
 library(Quandl)
 library(RcppRoll)
@@ -14,6 +15,7 @@ ticker <- 'AAPL'
 
 getCurrentPEPercentile <- function(ticker,value='eps')
 {
+  ticker <- toupper(ticker)
   price <- Quandl.datatable('SHARADAR/SEP',ticker=ticker,paginate = T)
   fundamental <- Quandl.datatable('SHARADAR/SF1',ticker=ticker,dimension='ARQ')
   
@@ -26,7 +28,13 @@ getCurrentPEPercentile <- function(ticker,value='eps')
   if(value=='revenue')
     rolling_eps <- fundamental[,c('datekey','revenue','shareswa')] %>% mutate(eps=revenue/shareswa)
   
-  rolling_eps <- rolling_eps %>% arrange(datekey) %>% mutate(eps4=roll_sum(eps,4,align='right',fill=NA))
+  # Calculate the TTM growth-rate as well
+  rolling_eps <- rolling_eps %>% arrange(datekey)
+  n=nrow(rolling_eps)
+  tmp <- data.frame(datekey=rolling_eps$datekey[5:n],TTM=rolling_eps$eps[1:(n-4)])
+  rolling_eps <- rolling_eps %>% left_join(tmp) %>% mutate(growth=(eps-TTM)/TTM)
+  
+  rolling_eps <- rolling_eps %>% dplyr::arrange(datekey) %>% mutate(eps4=roll_sum(eps,4,align='right',fill=NA))
   
   tmp=rolling_eps$datekey
   
@@ -37,17 +45,23 @@ getCurrentPEPercentile <- function(ticker,value='eps')
   
   daily_pe <- daily_pe %>% filter(!is.na(datekey)) %>% left_join(rolling_eps,by='datekey')
   daily_pe <- daily_pe %>% mutate(close=as.numeric(close),pe=close/eps4) %>% na.omit
-  
+  daily_pe <- daily_pe %>% mutate(peg=pe/growth)
   daily_pe <- daily_pe %>% arrange(desc(date))
   
   if(nrow(daily_pe)==0) return(NULL)
   
   current_pe <- daily_pe[1,]
   
-  pe_percentile <- ecdf(daily_pe$pe)
+  # To adress the issue the negative value polluting the percentile
+  minpe <- min(daily_pe$pe)
+  minpeg <- min(daily_pe$peg)
+  pe_percentile <- ecdf(abs(daily_pe$pe))
+  peg_percentile <- ecdf(abs(daily_pe$peg))
   
   # 0-low, 1-high
-  result <- pe_percentile(current_pe$pe)
+  result <- c(pe_percentile(abs(current_pe$pe)),peg_percentile(abs(current_pe$peg)))
+  names(result) <- c('PE','PEG')
+  
   if(value=='ebitda')
     daily_pe <- daily_pe %>% mutate(pebitda=pe) %>% select(-pe)
   if(value=='revenue')
@@ -56,10 +70,22 @@ getCurrentPEPercentile <- function(ticker,value='eps')
   return(list(hist=daily_pe,current_percntile=result))
 }
 
-tmp <- getCurrentPEPercentile('MU')
-hist <- tmp$hist
-head(hist)
-tmp$current_percntile
+pwFunc <- function(ticker,prev_date)
+{
+  tmp <- getCurrentPEPercentile(ticker)
+  hist <- tmp$hist
+  prev <- as.Date(prev_date)
+  p0 <- hist %>% filter(date==prev) %>% select(close) %>% pull
+  p <- hist[1,'close']
+  
+  print(head(hist,5))
+  print(c('Change'=(p-p0)/p0))
+  print(tmp$current_percntile)
+
+  return(tmp)  
+}
+
+result <- pwFunc('spy',as.Date('2020-06-22'))
 
 # SP_UNIV_ALL <<- getSP500Univ()
 # sp_univ <- SP_UNIV_ALL %>% filter(date==max(SP_UNIV_ALL$date))
