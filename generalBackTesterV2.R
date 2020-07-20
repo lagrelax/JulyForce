@@ -10,15 +10,14 @@ library(ggplot2)
 library(plotly)
 library(lubridate)
 library(quantmod)
-
 source('utilities.R')
 source('FactorLibraryV2.R')
 source('portUtil.R')
 
 # Step 1, get a series of rebalance dates
-start_date='19991231'
-#start_date='20180101'
-end_date='20190701'
+#start_date='19991231'
+start_date='20000131'
+end_date='20200701'
 
 backtest_period <- getQuarterEndDates(start_date,end_date)
 
@@ -48,7 +47,8 @@ rtn_port <- port_wgt_rtn_ts %>% group_by(return_quarter) %>% summarise(Value=sum
 
 # Step 6. Get the market BM
 # Convert daily return to qtly
-idx='SP500'
+#idx='SP500'
+idx='RUS3000'
 bm_qtly_rtn <- getBMRtn(idx,'qtly')
 
 # Step 7. Compare with the BM
