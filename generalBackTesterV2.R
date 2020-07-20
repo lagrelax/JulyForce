@@ -15,13 +15,13 @@ source('FactorLibraryV2.R')
 source('portUtil.R')
 
 # Step 1, get a series of rebalance dates
-start_date='19991231'
-#start_date='20180101'
-end_date='20190701'
+#start_date='19991231'
+start_date='20000131'
+end_date='20200701'
 
 backtest_period <- getQuarterEndDates(start_date,end_date)
 
-factor <- 'roic'
+factor <- 'pb'
 
 # For each rebalance date, get the Sp univserse and rank the respective fundamental column
 port_wgt_rtn_ts <- NULL
@@ -49,7 +49,7 @@ rtn_port <- port_wgt_rtn_ts %>% group_by(return_quarter) %>% summarise(Value=sum
 # Convert daily return to qtly
 #idx='SP500'
 idx='RUS3000'
-bm_qtly_rtn <- getBMRtn(start_date,end_date,idx,'qtly')
+bm_qtly_rtn <- getBMRtn(idx,'qtly')
 
 # Step 7. Compare with the BM
 value_perf <- rtn_port %>% inner_join(bm_qtly_rtn, by=c('return_quarter'='quarter')) 
@@ -64,7 +64,3 @@ pos_attr <- port_wgt_rtn_ts %>% mutate(attr=wgt*return)
 pp <- ggplot(pos_attr)+geom_bar(aes(x=return_quarter,y=attr,fill=ticker),stat='identity')
 ggplotly(pp)
 
-# get monthly factor zscore 
-#load('Data/All_qtly_fundamental.RData')
-#avail_fundamental <- fundamental_dt_all %>% 
-calculateIC()
