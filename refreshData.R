@@ -39,3 +39,11 @@ sp_univ_net_new <- sp_univ_new %>% filter(date>max_date)
 file.rename('Data/SP_Univ_All.csv',paste0('Data/SP_UNIV_ALL_',max_date,'.csv'))
 sp_univ_all <- rbind(sp_univ_all,sp_univ_net_new)
 write.csv(sp_univ_all,'Data/SP_Univ_All.csv',row.names = F)
+
+# stock ref 
+stock_ref_all <- read.csv('Data/Stock_Ref_All.csv')
+stock_ref_new <-Quandl.datatable('SHARADAR/TICKERS',table='SF1',paginate = T)
+new_ticker <- stock_ref_new %>% filter(!ticker %in% stock_ref_all$ticker)
+file.rename('Data/Stock_Ref_All.csv',paste0('Data/SP_UNIV_ALL_BACKUP','.csv'))
+stock_ref_all <- rbind(stock_ref_all,new_ticker)
+write.csv(stock_ref_all,'Data/Stock_Ref_All.csv',row.names = F)

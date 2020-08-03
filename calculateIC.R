@@ -40,8 +40,33 @@ rtn_all_mthly <- getSecuritesRtn(unique(fundamental_rank$ticker),'mthly')
 
 fundamental_rank <- fundamental_rank %>% select(ticker,rebalance_date,yearmonth,z_rank)
 
-ic <- calculateIC(fundamental_rank,rtn_all_mthly,forward = 3)
+#system.time(stock_ref <- unique(fundamental_rank$ticker) %>% map_df(~Quandl.datatable('SHARADAR/TICKERS',table='SF1',ticker=.x,paginate = T)))
 
+stock_ref <- read.csv(file='Data/Stock_Ref_All.csv')
+
+
+ic_list <- calculateIC(fundamental_rank,rtn_all_mthly,forward = 3)
+
+ic_detail <- ic_list$detail
+
+ic <- ic_list$ic
+
+# get stock ref industry and sector and market cap 
+category_ref <- stock_ref %>% select(ticker,name,sector,industry,scalemarketcap,scalerevenue)
+ic_detail <- ic_detail %>% left_join(category_ref,by='ticker')
+write.csv(ic_detail,file='Output/pb_ic_details.csv')
+
+ic_detail_corr <- ic_detail %>% group_by(ticker,name) %>% summarize(IC=cor(z_rank,forward_return,method = 'spearman',use='pairwise.complete.obs'))
+ic_sector_rotation <- ic_detail %>% filter(!is.na(sector)) %>% group_by(rebalance_date,sector) %>% summarize(IC=cor(z_rank,forward_return,method = 'spearman',use='pairwise.complete.obs'),stock_cnt = length(ticker)) %>% filter(!is.na(IC))
+ic_industry_rotation <- ic_detail %>% filter(!is.na(industry)) %>% group_by(rebalance_date,industry) %>% summarize(IC=cor(z_rank,forward_return,method = 'spearman',use='pairwise.complete.obs'),stock_cnt = length(ticker)) %>% filter(!is.na(IC))
+ggplot(ic_sector_rotation)+geom_bar(aes(x=rebalance_date,y=IC,fill=sector),stat = 'identity')
+ggplot(ic_sector_rotation)+geom_line(aes(x=rebalance_date,y=IC,color=sector))
+
+ic_sector_rotation_wide <- ic_sector_rotation %>% spread(sector,IC)
+ic_industry_rotation_wide <- ic_industry_rotation %>% spread(industry,IC)
+
+write.csv(ic_sector_rotation_wide,file='Output/ic_sector_rotation.csv')
+write.csv(ic_industry_rotation_wide,file='Output/ic_industry_rotation.csv')
 
 p <- ggplot(ic)+geom_bar(aes(x=rebalance_date,y=IC),stat = 'identity')
 

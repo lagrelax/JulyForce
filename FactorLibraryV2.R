@@ -97,10 +97,11 @@ calculateIC <- function(fundamental_rank,rtn_mthly,forward=3)
   # Join with rank data, 1 mth fwd
   fundamental_rank <- fundamental_rank %>% mutate(forward_period=as.yearmon(rebalance_date %m+% months(1)))
   
-  ic_df <- fundamental_rank %>% inner_join(cum_rtn_all,by=c('ticker','forward_period'='yearmon'))
+  zrank_ret_df <- fundamental_rank %>% inner_join(cum_rtn_all,by=c('ticker','forward_period'='yearmon'))
   
-  ic_df <- ic_df %>% group_by(rebalance_date) %>% dplyr::summarise(IC=cor(z_rank,forward_return,method = 'spearman',use='pairwise.complete.obs'))
+  ic_df <- zrank_ret_df %>% group_by(rebalance_date) %>% dplyr::summarise(IC=cor(z_rank,forward_return,method = 'spearman',use='pairwise.complete.obs'))
   
+  return(list(detail=zrank_ret_df,ic=ic_df))
 }
 
 
