@@ -70,6 +70,12 @@ getBMRtn <- function(idx='SP500',freq='dly')
     bm_xts <- RUA[,'RUA.Adjusted']
   }
   
+  # SP500 Growth Index ETF
+  if(idx=='IVW')
+  {
+    getSymbols.yahoo('IVW',env=globalenv(),from='1999-12-31')
+    bm_xts <- IVW[,'IVW.Adjusted']
+  }
   
   bm_rtn <- Return.calculate(bm_xts,method='discrete')
   names(bm_rtn) <- idx

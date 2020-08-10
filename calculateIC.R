@@ -65,9 +65,9 @@ ggplot(ic_sector_rotation)+geom_line(aes(x=rebalance_date,y=IC,color=sector))
 ic_sector_rotation_wide <- ic_sector_rotation %>% spread(sector,IC)
 ic_industry_rotation_wide <- ic_industry_rotation %>% spread(industry,IC)
 
-write.csv(ic_sector_rotation_wide,file='Output/ic_sector_rotation.csv')
-write.csv(ic_industry_rotation_wide,file='Output/ic_industry_rotation.csv')
+write.csv(ic_sector_rotation_wide,file='Output/ic_sector_rotation.csv',row.names = F)
+write.csv(ic_industry_rotation_wide,file='Output/ic_industry_rotation.csv',row.names = F)
+write.csv(ic_detail,file='Output/ic_detail.csv',row.names = F)
 
-p <- ggplot(ic)+geom_bar(aes(x=rebalance_date,y=IC),stat = 'identity')
+ggplot(ic)+geom_bar(aes(x=rebalance_date,y=IC),stat = 'identity')
 
-ggplotly(p)
