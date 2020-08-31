@@ -17,7 +17,7 @@ source('portUtil.R')
 
 # Step 1, get a series of rebalance dates
 start_date='20000131'
-end_date='20200701'
+end_date='20200801'
 
 # get historical monthly IC
 # first step: get monthly factor zscore using sp500 universe  
@@ -27,13 +27,16 @@ backtest_period <- getMonthEndDates(start_date,end_date)
 factor <- 'pb'
 
 fundamental_rank <- NULL
+adj_fundamental_all <- NULL
 for (rebalance_date in backtest_period)
 {
   rebalance_date <- as.Date(rebalance_date)
   print(paste("Process: ",rebalance_date))
   fundamental_z <- getFactorZscore(factor,rebalance_date) %>% mutate(z_rank=percent_rank(z_score))
-  
+  adj_fundamental <- getadjfundamental(rebalance_date)
   fundamental_rank <- rbind(fundamental_rank,fundamental_z)
+  adj_fundamental_all <- rbind(adj_fundamental_all,adj_fundamental)
+  
 }
 
 rtn_all_mthly <- getSecuritesRtn(unique(fundamental_rank$ticker),'mthly')
@@ -53,8 +56,21 @@ ic <- ic_list$ic
 
 # get stock ref industry and sector and market cap 
 category_ref <- stock_ref %>% select(ticker,name,sector,industry,scalemarketcap,scalerevenue)
+# get marketcap from fundaemtnal data 
+marketcap <- adj_fundamental_all[,c('rebalance_date','ticker','marketcap')]
 ic_detail <- ic_detail %>% left_join(category_ref,by='ticker')
+ic_detail <- ic_detail %>% left_join(marketcap, by=c('rebalance_date','ticker'))
 write.csv(ic_detail,file='Output/pb_ic_details.csv')
+# calculate median, average zscore, forward_return 
+ic_detail_sector_stats <- ic_detail %>% group_by(rebalance_date,sector) %>% summarise(z_rank_median = median(z_rank,na.rm=T),
+                                                                                      z_rank_avg = mean(z_rank,na.rm=T),
+                                                                                      z_rank_mktcap = sum(z_rank*marketcap,na.rm=T)/sum(marketcap,na.rm=T),
+                                                                                      forward_return_median = median(forward_return,na.rm=T),
+                                                                                      forward_return_avg = mean(forward_return,na.rm=T),
+                                                                                      forward_return_mktcap = sum(forward_return*marketcap,na.rm=T)/sum(marketcap,na.rm=T))
+
+write.csv(ic_detail_sector_stats,file='Output/pb_z_sector_stats.csv')
+
 
 ic_detail_corr <- ic_detail %>% group_by(ticker,name) %>% summarize(IC=cor(z_rank,forward_return,method = 'spearman',use='pairwise.complete.obs'))
 ic_sector_rotation <- ic_detail %>% filter(!is.na(sector)) %>% group_by(rebalance_date,sector) %>% summarize(IC=cor(z_rank,forward_return,method = 'spearman',use='pairwise.complete.obs'),stock_cnt = length(ticker)) %>% filter(!is.na(IC))

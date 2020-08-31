@@ -47,3 +47,5 @@ new_ticker <- stock_ref_new %>% filter(!ticker %in% stock_ref_all$ticker)
 file.rename('Data/Stock_Ref_All.csv',paste0('Data/SP_UNIV_ALL_BACKUP','.csv'))
 stock_ref_all <- rbind(stock_ref_all,new_ticker)
 write.csv(stock_ref_all,'Data/Stock_Ref_All.csv',row.names = F)
+
+

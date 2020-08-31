@@ -65,6 +65,13 @@ getFactorZscore <- function(factor='pb',rebalance_date)
   
 }
 
+getadjfundamental <- function(rebalance_date)
+{
+  avail_univ <- getAvailSPUniv(rebalance_date)
+  avail_fundamental <- getAvailFundamental(avail_univ)
+  return(avail_fundamental)
+}
+
 #' Calculate quarterly Information Coeffiecient
 #' 
 #' Spearman correlation between rank of all score column and rank of realized returns
