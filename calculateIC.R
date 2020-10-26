@@ -17,7 +17,7 @@ source('portUtil.R')
 
 # Step 1, get a series of rebalance dates
 start_date='20000131'
-end_date='20200801'
+end_date='20201001'
 
 # get historical monthly IC
 # first step: get monthly factor zscore using sp500 universe  
@@ -78,12 +78,18 @@ ic_industry_rotation <- ic_detail %>% filter(!is.na(industry)) %>% group_by(reba
 ggplot(ic_sector_rotation)+geom_bar(aes(x=rebalance_date,y=IC,fill=sector),stat = 'identity')
 ggplot(ic_sector_rotation)+geom_line(aes(x=rebalance_date,y=IC,color=sector))
 
-ic_sector_rotation_wide <- ic_sector_rotation %>% spread(sector,IC)
-ic_industry_rotation_wide <- ic_industry_rotation %>% spread(industry,IC)
+ic_sector_rotation_wide <- ic_sector_rotation %>% select(-stock_cnt) %>% spread(sector,IC)
+ic_industry_rotation_wide <- ic_industry_rotation %>% select(-stock_cnt) %>% spread(industry,IC)
+
+ic_sector_rotation_cnt <- ic_sector_rotation %>% select(-IC) %>% spread(sector,stock_cnt)
+ic_industry_rotation_cnt <- ic_industry_rotation %>% select(-IC) %>% spread(industry,stock_cnt)
 
 write.csv(ic_sector_rotation_wide,file='Output/ic_sector_rotation.csv',row.names = F)
 write.csv(ic_industry_rotation_wide,file='Output/ic_industry_rotation.csv',row.names = F)
+write.csv(ic_sector_rotation_cnt,file='Output/ic_sector_cnt.csv',row.names = F)
+write.csv(ic_industry_rotation_cnt,file='Output/ic_industry_cnt.csv',row.names = F)
+
 write.csv(ic_detail,file='Output/ic_detail.csv',row.names = F)
 
 ggplot(ic)+geom_bar(aes(x=rebalance_date,y=IC),stat = 'identity')
-
+write.csv(ic,file='Output/pb_ic.csv',row.names=F)
