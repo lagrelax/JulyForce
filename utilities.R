@@ -4,6 +4,7 @@ library(xts)
 library(PerformanceAnalytics)
 library(timeDate)
 library(bizdays)
+library(quantmod)
 
 Quandl.api_key(Sys.getenv('QUANDL_API_KEY'))
 
@@ -85,6 +86,18 @@ getBMRtn <- function(idx='SP500',freq='dly')
   bm_rtn <- as.data.frame(bm_rtn)
   result <- bm_rtn
   
+  if(freq=='mthly')
+  {
+    bm_rtn$date <- rownames(bm_rtn) %>% as.Date
+    rownames(bm_rtn) <- NULL
+    
+    month_date <- unique(bm_rtn[,'date',F]) %>% mutate(date=as.Date(date),yearmon=as.yearmon(date))
+    bm_rtn <- bm_rtn %>% left_join(month_date) %>% filter(!is.na(yearmon))
+    bm_mthly_rtn <- bm_rtn %>% group_by(yearmon) %>% summarise(Mthly_Rtn=prod(1+!!sym(idx))-1)
+    names(bm_mthly_rtn)[2] <- idx
+    
+    result <- bm_mthly_rtn
+  }
   if(freq=='qtly')
   {
     bm_rtn$date <- rownames(bm_rtn) %>% as.Date
