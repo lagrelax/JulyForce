@@ -17,17 +17,19 @@ source('portUtil.R')
 
 # Step 1, get a series of rebalance dates
 start_date='20000131'
-end_date='20201001'
+end_date='20210219'
 
 # get historical monthly IC
 # first step: get monthly factor zscore using sp500 universe  
 
 backtest_period <- getMonthEndDates(start_date,end_date) 
 
-factor <- 'pb'
+factor <- 'pe'
 
 fundamental_rank <- NULL
 adj_fundamental_all <- NULL
+
+# TODO: Make it incremental 
 for (rebalance_date in backtest_period)
 {
   rebalance_date <- as.Date(rebalance_date)
@@ -60,7 +62,12 @@ category_ref <- stock_ref %>% select(ticker,name,sector,industry,scalemarketcap,
 marketcap <- adj_fundamental_all[,c('rebalance_date','ticker','marketcap')]
 ic_detail <- ic_detail %>% left_join(category_ref,by='ticker')
 ic_detail <- ic_detail %>% left_join(marketcap, by=c('rebalance_date','ticker'))
-write.csv(ic_detail,file='Output/pb_ic_details.csv')
+
+output_dir <- file.path('Output',factor)
+
+if(!dir.exists(output_dir)) dir.create(output_dir)
+
+write.csv(ic_detail,file=file.path(output_dir,'pb_ic_details.csv'))
 # calculate median, average zscore, forward_return 
 ic_detail_sector_stats <- ic_detail %>% group_by(rebalance_date,sector) %>% summarise(z_rank_median = median(z_rank,na.rm=T),
                                                                                       z_rank_avg = mean(z_rank,na.rm=T),
@@ -69,7 +76,7 @@ ic_detail_sector_stats <- ic_detail %>% group_by(rebalance_date,sector) %>% summ
                                                                                       forward_return_avg = mean(forward_return,na.rm=T),
                                                                                       forward_return_mktcap = sum(forward_return*marketcap,na.rm=T)/sum(marketcap,na.rm=T))
 
-write.csv(ic_detail_sector_stats,file='Output/pb_z_sector_stats.csv')
+write.csv(ic_detail_sector_stats,file=file.path(output_dir,'pb_z_sector_stats.csv'))
 
 
 ic_detail_corr <- ic_detail %>% group_by(ticker,name) %>% summarize(IC=cor(z_rank,forward_return,method = 'spearman',use='pairwise.complete.obs'))
@@ -84,12 +91,12 @@ ic_industry_rotation_wide <- ic_industry_rotation %>% select(-stock_cnt) %>% spr
 ic_sector_rotation_cnt <- ic_sector_rotation %>% select(-IC) %>% spread(sector,stock_cnt)
 ic_industry_rotation_cnt <- ic_industry_rotation %>% select(-IC) %>% spread(industry,stock_cnt)
 
-write.csv(ic_sector_rotation_wide,file='Output/ic_sector_rotation.csv',row.names = F)
-write.csv(ic_industry_rotation_wide,file='Output/ic_industry_rotation.csv',row.names = F)
-write.csv(ic_sector_rotation_cnt,file='Output/ic_sector_cnt.csv',row.names = F)
-write.csv(ic_industry_rotation_cnt,file='Output/ic_industry_cnt.csv',row.names = F)
+write.csv(ic_sector_rotation_wide,file=file.path(output_dir,'ic_sector_rotation.csv'),row.names = F)
+write.csv(ic_industry_rotation_wide,file=file.path(output_dir,'ic_industry_rotation.csv'),row.names = F)
+write.csv(ic_sector_rotation_cnt,file=file.path(output_dir,'ic_sector_cnt.csv'),row.names = F)
+write.csv(ic_industry_rotation_cnt,file=file.path(output_dir,'ic_industry_cnt.csv'),row.names = F)
 
-write.csv(ic_detail,file='Output/ic_detail.csv',row.names = F)
+write.csv(ic_detail,file=file.path(output_dir,'ic_detail.csv'),row.names = F)
 
 ggplot(ic)+geom_bar(aes(x=rebalance_date,y=IC),stat = 'identity')
-write.csv(ic,file='Output/pb_ic.csv',row.names=F)
+write.csv(ic,file=file.path(output_dir,'pb_ic.csv'),row.names=F)
