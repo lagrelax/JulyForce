@@ -17,14 +17,14 @@ source('portUtil.R')
 
 # Step 1, get a series of rebalance dates
 start_date='20000131'
-end_date='20210219'
+end_date='20210306'
 
 # get historical monthly IC
 # first step: get monthly factor zscore using sp500 universe  
 
 backtest_period <- getMonthEndDates(start_date,end_date) 
 
-factor <- 'pe'
+factor <- 'evebitda'
 
 fundamental_rank <- NULL
 adj_fundamental_all <- NULL
@@ -67,7 +67,7 @@ output_dir <- file.path('Output',factor)
 
 if(!dir.exists(output_dir)) dir.create(output_dir)
 
-write.csv(ic_detail,file=file.path(output_dir,'pb_ic_details.csv'))
+write.csv(ic_detail,file=file.path(output_dir,paste0(factor,'_ic_details.csv')))
 # calculate median, average zscore, forward_return 
 ic_detail_sector_stats <- ic_detail %>% group_by(rebalance_date,sector) %>% summarise(z_rank_median = median(z_rank,na.rm=T),
                                                                                       z_rank_avg = mean(z_rank,na.rm=T),
@@ -76,7 +76,7 @@ ic_detail_sector_stats <- ic_detail %>% group_by(rebalance_date,sector) %>% summ
                                                                                       forward_return_avg = mean(forward_return,na.rm=T),
                                                                                       forward_return_mktcap = sum(forward_return*marketcap,na.rm=T)/sum(marketcap,na.rm=T))
 
-write.csv(ic_detail_sector_stats,file=file.path(output_dir,'pb_z_sector_stats.csv'))
+write.csv(ic_detail_sector_stats,file=file.path(output_dir,paste0(factor,'_z_sector_stats.csv')))
 
 
 ic_detail_corr <- ic_detail %>% group_by(ticker,name) %>% summarize(IC=cor(z_rank,forward_return,method = 'spearman',use='pairwise.complete.obs'))
@@ -99,4 +99,4 @@ write.csv(ic_industry_rotation_cnt,file=file.path(output_dir,'ic_industry_cnt.cs
 write.csv(ic_detail,file=file.path(output_dir,'ic_detail.csv'),row.names = F)
 
 ggplot(ic)+geom_bar(aes(x=rebalance_date,y=IC),stat = 'identity')
-write.csv(ic,file=file.path(output_dir,'pb_ic.csv'),row.names=F)
+write.csv(ic,file=file.path(output_dir,paste0(factor,'_ic.csv')),row.names=F)
