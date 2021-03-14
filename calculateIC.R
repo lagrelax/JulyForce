@@ -17,14 +17,14 @@ source('portUtil.R')
 
 # Step 1, get a series of rebalance dates
 start_date='20000131'
-end_date='20210306'
+end_date='20210313'
 
 # get historical monthly IC
 # first step: get monthly factor zscore using sp500 universe  
 
 backtest_period <- getMonthEndDates(start_date,end_date) 
 
-factor <- 'evebitda'
+factor <- 'marketcap'
 
 fundamental_rank <- NULL
 adj_fundamental_all <- NULL
