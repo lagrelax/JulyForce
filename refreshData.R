@@ -14,6 +14,8 @@ dates <-
 
 # Take 1 hr to load from QUANDL
 system.time(price_dt_all_new <- dates %>% map_df(~Quandl.datatable('SHARADAR/SEP',date=.x,paginate = T)))
+price_dt_all$dividends <- NULL
+price_dt_all_new <- price_dt_all_new %>% mutate(close=closeadj,closeadj=NULL)
 
 file.rename('Data/All_daily_price.RData',paste0('Data/All_daily_price','_',max(price_dt_all$date),'.RData'))
 price_dt_all <- rbind(price_dt_all,price_dt_all_new)

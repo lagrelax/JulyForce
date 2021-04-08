@@ -35,7 +35,7 @@ getAvailFundamental <- function(avail_univ)
   if(!exists('fundamental_dt_all'))
   {
     print('Initializting all fundamental historical data')
-    load('Data/All_qtly_fundamental.RData')
+    load('Data/All_qtly_fundamental_derived.RData')
   }
     
   

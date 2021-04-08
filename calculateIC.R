@@ -24,7 +24,7 @@ end_date='20210327'
 
 backtest_period <- getMonthEndDates(start_date,end_date) 
 
-factor <- 'divyield'
+factor <- 'rd_ratio'
 
 fundamental_rank <- NULL
 adj_fundamental_all <- NULL
