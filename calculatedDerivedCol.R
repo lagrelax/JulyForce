@@ -10,9 +10,18 @@ fundamental_derived_all <- fundamental_dt_all %>% mutate(rd_ratio=rnd/ev,cpx_rat
 
 fundamental_dt_all <- fundamental_derived_all
 
-# order by the date
-assets_rolling <- fundamental_dt_all %>% select(ticker,calendardate,assets) %>% group_by(ticker) %>% arrange(calendardate,.by_group=T) %>% as.data.frame
 
+# Before calculate the rolling avg, fill the NA assets
+
+# Note for the same reportperiod/calendardate, there may be multple records for the same company due to revision etc. E.g. AIRO at 2000-03-31. To avoid look-fwd bias, we decided to use the earliest reported observation. However, when the required data is missing at the first record, using those aviable from the later datekeys in an early to late order. After than, we then interpolate any remaining missing values
+
+airo <- fundamental_dt_all %>% filter(ticker=='AIRO') 
+
+  # order by the date
+  assets_rolling <- fundamental_dt_all %>% select(ticker,calendardate,assets) %>% group_by(ticker) %>% arrange(calendardate,.by_group=T) %>% as.data.frame
+
+
+# Calculate rolling avg
 tmp <- split(assets_rolling,assets_rolling$ticker) %>% map_df(
   function(x) {
     if(nrow(x)>3)
