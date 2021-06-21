@@ -22,8 +22,8 @@ price_dt_all <- rbind(price_dt_all,price_dt_all_new)
 save(price_dt_all,file='Data/All_daily_price.RData')
 
 load('Data/All_qtly_fundamental.RData')
-#min_date <-adjust.next(max(price_dt_all$date)+1,'NYSE')
-max_date <- as.Date(today())
+min_date <-adjust.next(max(fundamental_dt_all$date)+1,'NYSE')
+#max_date <- as.Date(today())
 dates <-
   seq.Date(min_date, max_date, by = 'day') 
 
