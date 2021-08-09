@@ -31,14 +31,36 @@ to_interp <- to_interp %>% filter(!(ticker %in% tmp$ticker))
 
 tmp <- split.data.frame(to_interp,to_interp$ticker) %>% map_df(function(df){
   print(unique(df$ticker))
+  df[is.na(df$assets),'assets'] = 0
+  # Skip when only one record of 0
+  if(nrow(df)==1 & df[1,'assets']==0) return(NULL)
+  df[df$assets==0,'assets'] = NA
   x <- zoo(df$assets,df$datekey)
-  df$assets <- na.approx(x)
+  y <- na.approx(x,na.rm=F)
+  extrap_x = index(y[is.na(y)]) 
+  # Extrapolate when needed
+  if(length(extrap_x)>0)
+  {
+    y_val = y[!is.na(y)]
+    if(length(y_val==1))
+    {
+      # Can't extrap when only one value available
+      y[extrap_x] <- y_val
+    } else
+    {
+      extrap_y = Hmisc::approxExtrap(as.numeric(index(y[!is.na(y)])),y_val,as.numeric(extrap_x))
+      y[extrap_x] <- extrap_y$y    
+    }
+  }
+  df$assets <- y %>% as.numeric
+  return(df)
 })
+
+fundamental_dt_all$assets = NULL
+fundamental_dt_all <- fundamental_dt_all %>% left_join(tmp,by=c('ticker','datekey','calendardate','reportperiod'))
 
 # order by the date
 assets_rolling <- fundamental_dt_all %>% select(ticker,calendardate,assets) %>% group_by(ticker) %>% arrange(calendardate,.by_group=T) %>% as.data.frame
-
-
 
 # Calculate rolling avg
 tmp <- split(assets_rolling,assets_rolling$ticker) %>% map_df(
@@ -50,5 +72,6 @@ tmp <- split(assets_rolling,assets_rolling$ticker) %>% map_df(
 
 fundamental_dt_all$assetsavg <- NULL
 fundamental_dt_all <- fundamental_dt_all %>% left_join(select(tmp,-assets),by=c('ticker','calendardate'))
+fundamental_dt_all <- fundamental_dt_all %>% mutate(roa_derived = revenue/assetsavg)
 
 save(fundamental_dt_all,file='Data/All_qtly_fundamental_derived.RData')
