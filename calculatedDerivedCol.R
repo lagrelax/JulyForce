@@ -35,6 +35,8 @@ tmp <- split.data.frame(to_interp,to_interp$ticker) %>% map_df(function(df){
   # Skip when only one record of 0
   if(nrow(df)==1 & df[1,'assets']==0) return(NULL)
   df[df$assets==0,'assets'] = NA
+  # Remove duplicates in assets
+  #df <- df[,c('ticker','calendardate','datekey','reportperiod','assets')] %>% unique
   x <- zoo(df$assets,df$datekey)
   y <- na.approx(x,na.rm=F)
   extrap_x = index(y[is.na(y)]) 
@@ -57,7 +59,12 @@ tmp <- split.data.frame(to_interp,to_interp$ticker) %>% map_df(function(df){
 })
 
 fundamental_dt_all$assets = NULL
-fundamental_dt_all <- fundamental_dt_all %>% left_join(tmp,by=c('ticker','datekey','calendardate','reportperiod'))
+# Remove datekey as we remove some for multiple report in the same report date, join on it would cause NAs
+tmp$datekey <- NULL
+fundamental_dt_all <- fundamental_dt_all %>% left_join(tmp,by=c('ticker','calendardate','reportperiod'))
+
+# The remaining are companies whose assets are all na, drop them
+fundamental_dt_all <- fundamental_dt_all %>% filter(!is.na(assets))
 
 # order by the date
 assets_rolling <- fundamental_dt_all %>% select(ticker,calendardate,assets) %>% group_by(ticker) %>% arrange(calendardate,.by_group=T) %>% as.data.frame
