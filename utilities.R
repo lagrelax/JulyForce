@@ -1,5 +1,6 @@
 options(stringsAsFactors = F)
 
+library(Quandl)
 library(xts)
 library(PerformanceAnalytics)
 library(timeDate)
@@ -196,4 +197,54 @@ getMonthEndDates <- function(start,end)
   dates <- dates %>% mutate(MonthEnd=as.Date(as.yearmon(Date))-1)
   mth_ends <- dates %>% select(MonthEnd) %>% unique %>% mutate(BizDate=adjust.previous(MonthEnd,'NYSE'))
   mth_ends <- mth_ends$BizDate
+}
+
+fillFundamentalNA <- function(fundamental_dt_all,col_name)
+{
+  
+  factor <- fundamental_dt_all[,c('ticker','datekey','calendardate','reportperiod',col_name)]
+  
+  tmp <- factor %>% group_by(ticker,calendardate,reportperiod) %>% mutate_(IsNa=is.na(col_name)) %>% mutate(earlist=min(datekey),latest=max(datekey))
+  
+  tmp <- tmp %>% filter((IsNa&(earlist==datekey)) |(!IsNa)&(datekey==latest))
+  
+  to_interp <- tmp %>% select(-IsNa,-earlist,-latest)
+  
+  to_interp <- to_interp %>% arrange(ticker,calendardate,reportperiod,datekey)
+  
+  # Get rid of tickers with all Nas or all 0s
+  tmp <- to_interp %>% group_by(ticker) %>% 
+    dplyr::summarise(N1=length(calendardate),N2=sum(is.na(!!sym(col_name))),
+                     N3=sum(!!sym(col_name)==0,na.rm=T))
+  
+  tmp <- tmp %>% filter(N1==(N2+N3))
+  
+  to_interp <- to_interp %>% filter(!(ticker %in% tmp$ticker))
+  
+  tmp <- split.data.frame(to_interp,to_interp$ticker) %>% map_df(function(df){
+    # print(unique(df$ticker))
+    df[is.na(df[,col_name]),col_name] = 0
+    # Skip when only one record of 0
+    if(nrow(df)==1 & df[1,col_name]==0) return(NULL)
+    df[df[,col_name]==0,col_name] = NA
+    x <- zoo(df[,col_name],df$datekey)
+    y <- na.approx(x,na.rm=F)
+    extrap_x = index(y[is.na(y)]) 
+    # Extrapolate when needed
+    if(length(extrap_x)>0)
+    {
+      y_val = y[!is.na(y)]
+      if(length(y_val==1))
+      {
+        # Can't extrap when only one value available
+        y[extrap_x] <- y_val
+      } else
+      {
+        extrap_y = Hmisc::approxExtrap(as.numeric(index(y[!is.na(y)])),y_val,as.numeric(extrap_x))
+        y[extrap_x] <- extrap_y$y    
+      }
+    }
+    df[,col_name] <- y %>% as.numeric
+    return(df)
+  })
 }
